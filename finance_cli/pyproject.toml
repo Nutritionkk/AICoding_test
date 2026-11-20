@@ -1,0 +1,9 @@
+# 项目元信息与依赖声明
+[project]
+name = "finance-cli"
+version = "0.1.0"
+description = "本地 Web 记账工具（Streamlit + SQLite）"
+requires-python = ">=3.10"
+dependencies = [
+    "streamlit",
+]
