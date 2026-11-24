@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --import tsx --test lib/__tests__/*.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -27,7 +28,7 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
