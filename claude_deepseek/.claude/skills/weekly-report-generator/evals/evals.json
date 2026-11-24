@@ -1,0 +1,40 @@
+{
+  "skill_name": "weekly-report-generator",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "帮我生成本周的周报",
+      "expected_output": "生成结构化周报 Markdown 文件，报告期 2026-11-16 ~ 2026-11-22（今天周一，应回落到上一自然周），包含 2 个提交（bfcb5a3、aac90bf）、TODO 变更章节、下周计划、风险章节",
+      "files": [],
+      "expectations": [
+        "输出目录中存在 Markdown 周报文件",
+        "报告周期正确回落：正文出现 2026-11-16 作为周期起点",
+        "包含本周全部 2 个提交：正文出现 bfcb5a3 和 aac90bf",
+        "包含 TODO 变更章节：正文出现 TODO 字样",
+        "提交正确归类：正文出现'功能开发'"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "汇总 11 月 21 日到 11 月 22 日这两天我的 Git 提交，生成一份报告",
+      "expected_output": "识别该周期内 0 个提交，正确处理空周期边界：生成报告说明无提交，或明确告知用户无提交",
+      "files": [],
+      "expectations": [
+        "明确说明周期内无提交（出现'无提交/没有找到/0 条'等表述）",
+        "周期范围正确：输出中提及 11-21 / 11-22 或 2026-11-21 / 2026-11-22"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "这周我在 finance_cli 上做了哪些事？帮我整理一份总结文档",
+      "expected_output": "扫描范围限定 finance_cli 子目录，只包含 bfcb5a3（finance-cli 提交），不包含 aac90bf（hello_world 提交）",
+      "files": [],
+      "expectations": [
+        "输出目录中存在 Markdown 总结文件",
+        "只包含 finance_cli 提交：出现 bfcb5a3，aac90bf 仅可作为排除项提及",
+        "正文声明了扫描范围：出现 finance_cli",
+        "包含 TODO 章节：正文出现 TODO 字样"
+      ]
+    }
+  ]
+}
