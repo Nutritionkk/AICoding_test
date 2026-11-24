@@ -1,0 +1,99 @@
+// Mini Mall 数据模型
+// 价格一律用 Int 存「分」，避免 SQLite 下 Decimal 浮点精度问题
+
+generator client {
+  provider = "prisma-client-js" // Prisma 5 唯一稳定生成器
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 注意：Prisma 5 的 SQLite 连接器不支持 enum（Prisma 6+ 才支持），
+// 角色与订单状态用 String 存储，类型安全由应用层 TS 联合类型 + zod 保证
+
+model User {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         String     @default("USER") // "USER" | "ADMIN"
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  cartItems    CartItem[]
+  orders       Order[]
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String
+  price       Int // 单位：分
+  stock       Int         @default(0)
+  imageUrl    String
+  isActive    Boolean     @default(true) // 上架/下架
+  categoryId  Int
+  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  @@index([categoryId])
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@unique([userId, productId]) // 一人一商品一条，加购走 upsert 增量
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  orderNo         String      @unique // 格式 MM-YYYYMMDD-XXXXXX
+  userId          Int
+  status          String      @default("PENDING") // PENDING|PAID|SHIPPED|COMPLETED|CANCELLED
+  originalAmount  Int // 折前合计，分
+  discountRate    Float       @default(1) // 下单时会员折扣快照，1=无折扣
+  totalAmount     Int // 实付，分
+  receiverName    String
+  receiverPhone   String
+  receiverAddress String
+  note            String?
+  paidAt          DateTime?
+  shippedAt       DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelledReason String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items           OrderItem[]
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model OrderItem {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  productId   Int? // 商品删除后置空
+  productName String // 快照：商品名
+  price       Int // 快照：折前单价，分
+  quantity    Int
+  imageUrl    String // 快照：商品图
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  @@index([orderId])
+}
