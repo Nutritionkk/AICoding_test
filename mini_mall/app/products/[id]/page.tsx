@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { AddToCartForm } from "@/components/product/add-to-cart-form";
 import { prisma } from "@/lib/db";
 import { formatPrice } from "@/lib/utils";
 
@@ -63,11 +64,8 @@ export default async function ProductDetailPage({
           <p className="text-sm leading-relaxed text-muted-foreground">
             {product.description}
           </p>
-          <div className="mt-auto flex gap-2">
-            {/* 加购按钮在第 10 步实现 */}
-            <Button size="lg" disabled={product.stock <= 0}>
-              {product.stock > 0 ? "加入购物车" : "暂时缺货"}
-            </Button>
+          <div className="mt-auto flex flex-wrap items-center gap-2">
+            <AddToCartForm productId={product.id} stock={product.stock} />
             <Button variant="outline" size="lg" asChild>
               <Link href="/products">继续逛逛</Link>
             </Button>
