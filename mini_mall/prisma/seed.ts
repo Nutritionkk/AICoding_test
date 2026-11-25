@@ -61,6 +61,8 @@ async function main() {
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
   await prisma.user.deleteMany();
+  // 重置 SQLite 自增序列，保证复跑后 id 稳定（否则 id 会持续增长）
+  await prisma.$executeRawUnsafe("DELETE FROM sqlite_sequence");
 
   console.log("创建账号...");
   const admin = await prisma.user.create({
