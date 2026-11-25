@@ -15,6 +15,7 @@ import {
   PAGE_SIZE,
   buildProductQuery,
   clampPage,
+  firstSearchParam,
   type ProductSearchParams,
 } from "@/lib/products";
 
@@ -47,6 +48,11 @@ async function ProductList({
   const sp = await searchParams;
   const { where, orderBy, page } = buildProductQuery(sp);
 
+  // 归一化后的当前参数（重复 query 参数取第一个）
+  const q = firstSearchParam(sp.q) ?? "";
+  const category = firstSearchParam(sp.category) ?? "";
+  const sort = firstSearchParam(sp.sort) ?? "newest";
+
   // 先查总数与分类（并行），页码收敛后再取当前页数据
   const [total, categories] = await prisma.$transaction([
     prisma.product.count({ where }),
@@ -65,9 +71,9 @@ async function ProductList({
   // 分页链接：保留当前搜索/筛选/排序参数
   const buildHref = (p: number) => {
     const usp = new URLSearchParams();
-    if (sp.q) usp.set("q", sp.q);
-    if (sp.category) usp.set("category", sp.category);
-    if (sp.sort) usp.set("sort", sp.sort);
+    if (q) usp.set("q", q);
+    if (category) usp.set("category", category);
+    if (sort) usp.set("sort", sort);
     usp.set("page", String(p));
     return `/products?${usp.toString()}`;
   };
@@ -77,11 +83,7 @@ async function ProductList({
       <div className="mb-6">
         <ProductSearchForm
           categories={categories}
-          defaultValue={{
-            q: sp.q ?? "",
-            category: sp.category ?? "",
-            sort: sp.sort ?? "newest",
-          }}
+          defaultValue={{ q, category, sort }}
         />
       </div>
 

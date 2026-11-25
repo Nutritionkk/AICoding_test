@@ -24,8 +24,11 @@ describe("signSession / verifySession（会话 JWT 签发与验证）", () => {
 
   it("被篡改的 token 验证失败返回 null", async () => {
     const token = await signSession(payload);
-    // 修改 token 最后一个字符（保持格式合法）
-    const tampered = token.slice(0, -1) + (token.endsWith("a") ? "b" : "a");
+    // 修改签名部分倒数第二个字符（末位是 padding 位，改动不必然改变签名字节，
+    // 曾有 ~6% 概率篡改后仍验证通过；倒数第二位含 6 位真实签名数据，改动必然失效）
+    const ch = token[token.length - 2];
+    const swapped = ch === "A" ? "B" : "A";
+    const tampered = token.slice(0, -2) + swapped + token[token.length - 1];
     const session = await verifySession(tampered);
     assert.equal(session, null);
   });

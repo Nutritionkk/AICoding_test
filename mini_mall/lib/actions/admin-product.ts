@@ -1,10 +1,11 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { productSchema } from "@/lib/validations";
+import { idSchema, productSchema } from "@/lib/validations";
 import { yuanToCents } from "@/lib/utils";
 
 /** 商品表单状态（useActionState 用） */
@@ -103,6 +104,10 @@ export async function updateProduct(
   formData: FormData
 ): Promise<AdminFormState> {
   await requireAdmin();
+  const idParsed = idSchema.safeParse(productId);
+  if (!idParsed.success) {
+    return { error: "商品参数无效" };
+  }
   const result = parseProductForm(formData);
   if (!result.ok) {
     return { fieldErrors: result.fieldErrors };
@@ -117,7 +122,7 @@ export async function updateProduct(
   }
 
   await prisma.product.update({
-    where: { id: productId },
+    where: { id: idParsed.data },
     data: values,
   });
   revalidatePath("/admin/products");
@@ -130,7 +135,18 @@ export async function updateProduct(
 /** 删除商品（购物车级联删除，历史订单明细保留快照） */
 export async function deleteProduct(productId: number) {
   await requireAdmin();
-  await prisma.product.delete({ where: { id: productId } });
+  const idParsed = idSchema.safeParse(productId);
+  if (!idParsed.success) {
+    return { success: false, error: "商品参数无效" };
+  }
+  try {
+    await prisma.product.delete({ where: { id: idParsed.data } });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+      return { success: false, error: "商品已不存在" };
+    }
+    throw e;
+  }
   revalidatePath("/admin/products");
   revalidatePath("/products");
   revalidatePath("/");

@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { categorySchema } from "@/lib/validations";
+import { categorySchema, idSchema } from "@/lib/validations";
 
 /** 分类操作结果 */
 export type CategoryActionResult = {
@@ -45,6 +45,10 @@ export async function updateCategory(
   formData: FormData
 ): Promise<CategoryActionResult> {
   await requireAdmin();
+  const idParsed = idSchema.safeParse(categoryId);
+  if (!idParsed.success) {
+    return { success: false, error: "分类参数无效" };
+  }
   const parsed = categorySchema.safeParse({ name: formData.get("name") });
   if (!parsed.success) {
     const fe = parsed.error.flatten().fieldErrors;
@@ -52,12 +56,15 @@ export async function updateCategory(
   }
   try {
     await prisma.category.update({
-      where: { id: categoryId },
+      where: { id: idParsed.data },
       data: { name: parsed.data.name },
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return { success: false, fieldErrors: { name: ["分类已存在"] } };
+    }
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+      return { success: false, error: "分类已不存在" };
     }
     throw e;
   }
@@ -72,11 +79,18 @@ export async function deleteCategory(
   categoryId: number
 ): Promise<CategoryActionResult> {
   await requireAdmin();
+  const idParsed = idSchema.safeParse(categoryId);
+  if (!idParsed.success) {
+    return { success: false, error: "分类参数无效" };
+  }
   try {
-    await prisma.category.delete({ where: { id: categoryId } });
+    await prisma.category.delete({ where: { id: idParsed.data } });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
       return { success: false, error: "该分类下仍有商品，无法删除" };
+    }
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+      return { success: false, error: "分类已不存在" };
     }
     throw e;
   }

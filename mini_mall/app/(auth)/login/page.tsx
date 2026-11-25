@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string | string[] }>;
 }) {
   return (
     <main className="flex flex-1 items-center justify-center py-16">
@@ -25,8 +25,10 @@ export default function LoginPage({
 async function LoginFormWrapper({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string | string[] }>;
 }) {
   const { next } = await searchParams;
-  return <LoginForm next={next} />;
+  // 重复 query 参数归一化（?next=a&next=b 时是数组）
+  const nextValue = Array.isArray(next) ? next[0] : next;
+  return <LoginForm next={nextValue} />;
 }

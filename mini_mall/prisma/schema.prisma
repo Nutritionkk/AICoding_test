@@ -64,6 +64,7 @@ model Order {
   id              Int         @id @default(autoincrement())
   orderNo         String      @unique // 格式 MM-YYYYMMDD-XXXXXX
   userId          Int
+  checkoutToken   String? // 下单幂等键：同一结算表单重复提交只创建一单
   status          String      @default("PENDING") // PENDING|PAID|SHIPPED|COMPLETED|CANCELLED
   originalAmount  Int // 折前合计，分
   discountRate    Float       @default(1) // 下单时会员折扣快照，1=无折扣
@@ -81,6 +82,7 @@ model Order {
   updatedAt       DateTime    @updatedAt
   user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   items           OrderItem[]
+  @@unique([userId, checkoutToken])
   @@index([userId, createdAt])
   @@index([status])
 }

@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { OrderError } from "@/lib/orders";
-import { isValidTransition, type OrderStatus } from "@/lib/validations";
+import {
+  idSchema,
+  isValidTransition,
+  orderStatusSchema,
+  reasonSchema,
+  type OrderStatus,
+} from "@/lib/validations";
 
 /** 管理侧订单操作结果 */
 export type AdminOrderActionResult = {
@@ -39,31 +45,45 @@ export async function updateOrderStatus(
 ): Promise<AdminOrderActionResult> {
   await requireAdmin();
 
+  // 运行时校验参数（TS 类型不能替代）
+  const idParsed = idSchema.safeParse(orderId);
+  if (!idParsed.success) {
+    return { success: false, error: "订单参数无效" };
+  }
+  const statusParsed = orderStatusSchema.safeParse(toStatus);
+  if (!statusParsed.success) {
+    return { success: false, error: "目标状态无效" };
+  }
+  const reasonParsed = reasonSchema.safeParse(reason);
+  const safeStatus = statusParsed.data;
+
   try {
     await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
-        where: { id: orderId },
+        where: { id: idParsed.data },
         include: { items: true },
       });
       if (!order) {
         throw new OrderError("订单不存在");
       }
       const from = order.status as OrderStatus;
-      if (!isValidTransition(from, toStatus)) {
-        throw new OrderError(`不允许从 ${from} 变更为 ${toStatus}`);
+      if (!isValidTransition(from, safeStatus)) {
+        throw new OrderError(`不允许从 ${from} 变更为 ${safeStatus}`);
       }
 
       // 原子条件更新：状态未变化才更新成功，防并发重复流转
       const updated = await tx.order.updateMany({
-        where: { id: orderId, status: from },
+        where: { id: idParsed.data, status: from },
         data: {
-          status: toStatus,
-          ...(toStatus === "CANCELLED" && {
+          status: safeStatus,
+          ...(safeStatus === "CANCELLED" && {
             cancelledAt: new Date(),
-            cancelledReason: reason?.trim() || null,
+            cancelledReason: reasonParsed.success
+              ? (reasonParsed.data ?? null)
+              : null,
           }),
-          ...(toStatus !== "CANCELLED" && {
-            [timestampField(toStatus)!]: new Date(),
+          ...(safeStatus !== "CANCELLED" && {
+            [timestampField(safeStatus)!]: new Date(),
           }),
         },
       });
@@ -72,7 +92,7 @@ export async function updateOrderStatus(
       }
 
       // 取消/退款：回补库存
-      if (toStatus === "CANCELLED") {
+      if (safeStatus === "CANCELLED") {
         for (const it of order.items) {
           if (it.productId) {
             await tx.product.updateMany({

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isAllowedImageUrl } from "./image-whitelist";
 
 // ============ 类型定义 ============
 // Prisma 5 的 SQLite 连接器不支持 enum，角色/状态以字符串存储，
@@ -68,7 +69,7 @@ export const productSchema = z.object({
   stock: z.coerce.number().int("库存必须是整数").min(0, "库存不能为负数"),
   imageUrl: z
     .url("图片地址必须是合法 URL")
-    .refine((v) => v.startsWith("http://") || v.startsWith("https://"), "仅支持 http(s) 图片地址"),
+    .refine(isAllowedImageUrl, "仅支持白名单图片域名（picsum.photos / placehold.co）"),
   categoryId: z.coerce.number().int("分类必须是整数").positive("请选择分类"),
   isActive: z
     .enum(["on", "off"])
@@ -78,6 +79,34 @@ export const productSchema = z.object({
 export const categorySchema = z.object({
   name: z.string().trim().min(1, "请输入分类名称").max(30, "分类名称最长 30 个字符"),
 });
+
+// ============ 参数型 action 的运行时校验（TS 类型不能替代运行时校验） ============
+
+/** 数据库记录 id：正整数且在 32 位 Int 范围内 */
+export const idSchema = z.coerce
+  .number()
+  .int("ID 必须是整数")
+  .positive("ID 必须为正数")
+  .max(2_147_483_647, "ID 超出范围");
+
+/** 商品数量：整数且 ≥ 1，设合理上限 */
+export const quantitySchema = z.coerce
+  .number()
+  .int("数量必须是整数")
+  .min(1, "数量至少为 1")
+  .max(100_000, "数量超出上限");
+
+/** 订单状态枚举（运行时白名单） */
+export const orderStatusSchema = z.enum([
+  "PENDING",
+  "PAID",
+  "SHIPPED",
+  "COMPLETED",
+  "CANCELLED",
+]);
+
+/** 取消/退款原因 */
+export const reasonSchema = z.string().trim().max(200, "原因最长 200 字").optional();
 
 // ============ 订单状态机 ============
 

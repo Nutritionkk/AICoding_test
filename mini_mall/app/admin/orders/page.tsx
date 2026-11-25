@@ -35,9 +35,11 @@ const selectClass =
 export default async function OrdersAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string | string[] }>;
 }) {
-  const { status } = await searchParams;
+  const { status: statusRaw } = await searchParams;
+  // 重复 query 参数归一化
+  const status = Array.isArray(statusRaw) ? statusRaw[0] : statusRaw;
   const valid = STATUS_OPTIONS.some((o) => o.value === status);
   const filter = valid && status ? (status as OrderStatus) : undefined;
 

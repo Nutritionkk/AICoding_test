@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -35,11 +35,18 @@ export function CreateCategoryForm() {
   const [state, formAction, pending] = useActionState(createCategory, {
     success: false,
   });
+  // 受控输入：避免 React 19 表单 action 自动重置清空输入
+  const [name, setName] = useState("");
 
   return (
     <form action={formAction} className="flex gap-2">
       <div className="flex flex-1 flex-col gap-1">
-        <Input name="name" placeholder="新分类名称（最多 30 字）" />
+        <Input
+          name="name"
+          placeholder="新分类名称（最多 30 字）"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
         {state.fieldErrors?.name && (
           <p className="text-sm text-destructive">{state.fieldErrors.name[0]}</p>
         )}
@@ -63,6 +70,8 @@ export function EditCategoryButton({
   const [state, formAction, pending] = useActionState(action, {
     success: false,
   });
+  // 受控输入：避免 React 19 表单 action 自动重置清空输入
+  const [name, setName] = useState(categoryName);
 
   return (
     <Dialog>
@@ -79,7 +88,12 @@ export function EditCategoryButton({
         <form action={formAction} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <Label htmlFor={`cat-${categoryId}`}>分类名称</Label>
-            <Input id={`cat-${categoryId}`} name="name" defaultValue={categoryName} />
+            <Input
+              id={`cat-${categoryId}`}
+              name="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
             {state.fieldErrors?.name && (
               <p className="text-sm text-destructive">{state.fieldErrors.name[0]}</p>
             )}

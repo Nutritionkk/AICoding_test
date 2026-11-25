@@ -24,10 +24,11 @@ export const metadata: Metadata = {
 export default async function ProductsAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string | string[] }>;
 }) {
   const { q } = await searchParams;
-  const keyword = q?.trim() ?? "";
+  // 重复 query 参数归一化
+  const keyword = (Array.isArray(q) ? q[0] : q)?.trim() ?? "";
 
   return (
     <div>

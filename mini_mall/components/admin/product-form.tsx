@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,12 +26,27 @@ type ProductFormProps = {
 
 /** 商品表单（新建/编辑共用）：useActionState 提交 Server Action */
 export function ProductForm({ categories, product }: ProductFormProps) {
-  const action = product
-    ? updateProduct.bind(null, product.id)
-    : createProduct;
+  const action = product ? updateProduct.bind(null, product.id) : createProduct;
   const [state, formAction, pending] = useActionState(action, {});
+  // 受控输入：避免 React 19 表单 action 自动重置导致校验失败后输入清空
+  const [values, setValues] = useState({
+    name: product?.name ?? "",
+    description: product?.description ?? "",
+    price: product ? (product.price / 100).toFixed(2) : "",
+    stock: product ? String(product.stock) : "0",
+    imageUrl: product?.imageUrl ?? "",
+    categoryId: product ? String(product.categoryId) : String(categories[0]?.id ?? ""),
+    isActive: product ? product.isActive : true,
+  });
+  const handleChange =
+    (field: keyof typeof values) =>
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+      >
+    ) =>
+      setValues((v) => ({ ...v, [field]: e.target.value }));
 
-  // 隐藏域保证 isActive 恒有值（复选框未勾选时提交 "off"）
   return (
     <form action={formAction} className="flex flex-col gap-4">
       {state.error && <Alert variant="destructive">{state.error}</Alert>}
@@ -40,8 +55,9 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         <Input
           id="name"
           name="name"
-          defaultValue={product?.name ?? ""}
           placeholder="最多 100 字"
+          value={values.name}
+          onChange={handleChange("name")}
         />
         {state.fieldErrors?.name && (
           <p className="text-sm text-destructive">{state.fieldErrors.name[0]}</p>
@@ -53,7 +69,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
           id="description"
           name="description"
           rows={3}
-          defaultValue={product?.description ?? ""}
+          value={values.description}
+          onChange={handleChange("description")}
         />
         {state.fieldErrors?.description && (
           <p className="text-sm text-destructive">
@@ -70,8 +87,9 @@ export function ProductForm({ categories, product }: ProductFormProps) {
             type="number"
             step="0.01"
             min="0"
-            defaultValue={product ? (product.price / 100).toFixed(2) : ""}
             placeholder="如 19.90"
+            value={values.price}
+            onChange={handleChange("price")}
           />
           {state.fieldErrors?.price && (
             <p className="text-sm text-destructive">{state.fieldErrors.price[0]}</p>
@@ -85,7 +103,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
             type="number"
             min="0"
             step="1"
-            defaultValue={product?.stock ?? 0}
+            value={values.stock}
+            onChange={handleChange("stock")}
           />
           {state.fieldErrors?.stock && (
             <p className="text-sm text-destructive">{state.fieldErrors.stock[0]}</p>
@@ -97,8 +116,9 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         <Input
           id="imageUrl"
           name="imageUrl"
-          defaultValue={product?.imageUrl ?? ""}
           placeholder="https://..."
+          value={values.imageUrl}
+          onChange={handleChange("imageUrl")}
         />
         {state.fieldErrors?.imageUrl && (
           <p className="text-sm text-destructive">
@@ -112,7 +132,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
           <select
             id="categoryId"
             name="categoryId"
-            defaultValue={product?.categoryId ?? ""}
+            value={values.categoryId}
+            onChange={handleChange("categoryId")}
             className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             {categories.map((c) => (
@@ -128,22 +149,15 @@ export function ProductForm({ categories, product }: ProductFormProps) {
           )}
         </div>
         <div className="flex items-end gap-2 pb-2">
-          <input
-            type="hidden"
-            name="isActive"
-            value={product ? (product.isActive ? "on" : "off") : "on"}
-          />
+          <input type="hidden" name="isActive" value={values.isActive ? "on" : "off"} />
           <input
             id="isActiveCheckbox"
             type="checkbox"
-            defaultChecked={product ? product.isActive : true}
             className="size-4"
-            onChange={(e) => {
-              const hidden = e.currentTarget
-                .closest("form")
-                ?.querySelector<HTMLInputElement>('input[name="isActive"]');
-              if (hidden) hidden.value = e.currentTarget.checked ? "on" : "off";
-            }}
+            checked={values.isActive}
+            onChange={(e) =>
+              setValues((v) => ({ ...v, isActive: e.currentTarget.checked }))
+            }
           />
           <Label htmlFor="isActiveCheckbox">上架销售</Label>
         </div>

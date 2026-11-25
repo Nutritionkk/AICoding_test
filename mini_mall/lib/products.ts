@@ -7,13 +7,27 @@ export const PAGE_SIZE = 12;
 export const SORT_OPTIONS = ["newest", "price_asc", "price_desc"] as const;
 export type SortOption = (typeof SORT_OPTIONS)[number];
 
-/** 商品列表页搜索参数（searchParams 原始字符串） */
+/**
+ * 商品列表页搜索参数。
+ * Next 的 searchParams 值实际类型是 string | string[] | undefined
+ * （重复 query 参数时是数组），需归一化后再使用。
+ */
 export type ProductSearchParams = {
-  q?: string;
-  category?: string;
-  page?: string;
-  sort?: string;
+  q?: string | string[];
+  category?: string | string[];
+  page?: string | string[];
+  sort?: string | string[];
 };
+
+/** 重复 query 参数归一化：数组取第一个 */
+export function firstSearchParam(
+  value: string | string[] | undefined
+): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value;
+}
 
 /**
  * 解析搜索参数 → Prisma 查询条件。
@@ -24,19 +38,20 @@ export function buildProductQuery(params: ProductSearchParams): {
   orderBy: Prisma.ProductOrderByWithRelationInput;
   page: number;
 } {
-  const q = params.q?.trim() ?? "";
+  const q = firstSearchParam(params.q)?.trim() ?? "";
   const where: Prisma.ProductWhereInput = { isActive: true };
   if (q) {
     where.name = { contains: q };
   }
 
-  const categoryId = Number(params.category);
+  const categoryId = Number(firstSearchParam(params.category));
   if (Number.isInteger(categoryId) && categoryId > 0) {
     where.categoryId = categoryId;
   }
 
-  const sort = SORT_OPTIONS.includes(params.sort as SortOption)
-    ? (params.sort as SortOption)
+  const sortRaw = firstSearchParam(params.sort);
+  const sort = SORT_OPTIONS.includes(sortRaw as SortOption)
+    ? (sortRaw as SortOption)
     : "newest";
   const orderBy: Prisma.ProductOrderByWithRelationInput =
     sort === "price_asc"
@@ -45,7 +60,7 @@ export function buildProductQuery(params: ProductSearchParams): {
         ? { price: "desc" }
         : { createdAt: "desc" };
 
-  const pageRaw = Number(params.page);
+  const pageRaw = Number(firstSearchParam(params.page));
   const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
   return { where, orderBy, page };

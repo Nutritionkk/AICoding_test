@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { sanitizeNextPath } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, SESSION_MAX_AGE, signSession } from "@/lib/jwt";
 import { loginSchema, registerSchema, type Role } from "@/lib/validations";
@@ -110,13 +111,8 @@ export async function login(
   });
   revalidatePath("/", "layout");
 
-  // 防开放重定向：仅允许站内相对路径
-  const next = formData.get("next");
-  const target =
-    typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
-      ? next
-      : "/";
-  redirect(target);
+  // 防开放重定向：仅允许站内已知路径（含反斜杠规范化攻击防御）
+  redirect(sanitizeNextPath(formData.get("next")));
 }
 
 /** 登出：删 cookie → 跳登录页 */

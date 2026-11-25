@@ -53,6 +53,11 @@ async function createPaidOrder(
 }
 
 async function main() {
+  // 生产保护：seed 无条件清空全部数据，禁止在生产环境执行
+  if (process.env.NODE_ENV === "production") {
+    console.error("seed 脚本会清空全部数据，仅限本地开发环境执行");
+    process.exit(1);
+  }
   console.log("清空旧数据...");
   // 依赖顺序：OrderItem → Order → CartItem → Product → Category → User
   await prisma.orderItem.deleteMany();
